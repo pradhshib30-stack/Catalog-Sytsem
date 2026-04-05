@@ -757,4 +757,111 @@ elif st.session_state.step == 4:
 
         for _, row in df_option.iterrows():
             option_id = row['Supplier Option ID']
-            product_name =
+            product_name = row['Product Name']
+            count = st.number_input(
+                f"{product_name} ({option_id})",
+                min_value=1, max_value=20, value=1,
+                key=f"img_{option_id}"
+            )
+            image_counts[option_id] = count
+
+        if st.button("Run Risk Prediction →"):
+            model, le_vendor, le_colour, le_product, le_price = load_model()
+            df_predictions = predict_risk(
+                df_option, image_counts, model,
+                le_vendor, le_colour, le_product, le_price
+            )
+            st.session_state.risk_predictions = df_predictions
+            st.markdown("<br>", unsafe_allow_html=True)
+            st.markdown("**📊 Risk Prediction Results:**")
+            st.dataframe(df_predictions, use_container_width=True, hide_index=True)
+
+            st.markdown("<br>", unsafe_allow_html=True)
+            if st.button("Proceed to Re-upload →"):
+                st.session_state.step = 5
+                st.rerun()
+    else:
+        st.session_state.run_ml = False
+        st.markdown("<br>", unsafe_allow_html=True)
+        if st.button("Skip & Proceed to Re-upload →"):
+            st.session_state.step = 5
+            st.rerun()
+
+# ============================================================
+# STEP 5 — RE-UPLOAD CORRECTED FILE
+# ============================================================
+elif st.session_state.step == 5:
+    st.markdown("<div class='section-header'>📁 Step 5 — Re-upload Corrected File</div>", unsafe_allow_html=True)
+
+    st.markdown("""
+        <div class='info-box'>
+            <b>Instructions:</b><br>
+            • Please correct all issues flagged in the Validation Report<br>
+            • Upload the corrected vendor file below<br>
+            • The system will re-validate automatically
+        </div>
+    """, unsafe_allow_html=True)
+
+    uploaded_corrected = st.file_uploader("Upload corrected vendor file", type=['xlsx'])
+
+    if uploaded_corrected is not None:
+        df_corrected = pd.read_excel(uploaded_corrected)
+        df_corrected = standardize_vendor_file(df_corrected)
+        warnings_corrected = validate_vendor_file(df_corrected)
+
+        if len(warnings_corrected) == 0:
+            st.markdown("<div class='success-msg'>✅ No issues found! File is clean and ready for ID generation.</div>", unsafe_allow_html=True)
+            st.session_state.df_corrected = df_corrected
+            if st.button("Proceed to ID Generation →"):
+                st.session_state.step = 6
+                st.rerun()
+        else:
+            st.markdown(f"<div class='error-msg'>⚠️ {len(warnings_corrected)} issue(s) still found! Please fix and re-upload.</div>", unsafe_allow_html=True)
+            df_warn = pd.DataFrame(warnings_corrected)
+            st.dataframe(df_warn, use_container_width=True, hide_index=True)
+
+# ============================================================
+# STEP 6 — ID GENERATION & FINAL OUTPUT
+# ============================================================
+elif st.session_state.step == 6:
+    st.markdown("<div class='section-header'>🆔 Step 6 — ID Generation & Final Output</div>", unsafe_allow_html=True)
+
+    df_corrected = st.session_state.df_corrected
+    option_ids, sku_ids = generate_ids(df_corrected)
+    df_corrected['Option ID'] = option_ids
+    df_corrected['SKU ID'] = sku_ids
+
+    if st.session_state.run_ml and st.session_state.risk_predictions is not None:
+        df_corrected = df_corrected.merge(
+            st.session_state.risk_predictions[['Supplier Option ID', 'Risk Level', 'Risk Label']],
+            on='Supplier Option ID', how='left'
+        )
+
+    st.markdown("<div class='success-msg'>✅ Option IDs and SKU IDs generated successfully!</div>", unsafe_allow_html=True)
+
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.markdown(f"<div class='metric-card'><div class='metric-value'>{len(df_corrected)}</div><div class='metric-label'>Total SKUs</div></div>", unsafe_allow_html=True)
+    with col2:
+        st.markdown(f"<div class='metric-card'><div class='metric-value'>{df_corrected['Option ID'].nunique()}</div><div class='metric-label'>Unique Option IDs</div></div>", unsafe_allow_html=True)
+    with col3:
+        st.markdown(f"<div class='metric-card'><div class='metric-value'>{df_corrected['SKU ID'].nunique()}</div><div class='metric-label'>Unique SKU IDs</div></div>", unsafe_allow_html=True)
+
+    st.markdown("<br>", unsafe_allow_html=True)
+    st.markdown("**📋 Final Output Preview:**")
+    st.dataframe(df_corrected, use_container_width=True, hide_index=True)
+
+    output = io.BytesIO()
+    df_corrected.to_excel(output, index=False, engine='openpyxl')
+    output.seek(0)
+
+    st.markdown("<br>", unsafe_allow_html=True)
+    st.download_button(
+        label="⬇️ Download Final Output (Excel)",
+        data=output,
+        file_name="OptiCatalog_Final_Output.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+
+    st.markdown("<br>", unsafe_allow_html=True)
+    st.markdown("<div class='success-msg'>🎉 Process Complete! Your file is ready for Shopify cataloguing.</div>", unsafe_allow_html=True)
