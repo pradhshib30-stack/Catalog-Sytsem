@@ -770,17 +770,13 @@ elif st.session_state.step == 4:
             image_counts[option_id] = count
 
         col1, col2 = st.columns(2)
-        with col1:
-            if st.button("Run Risk Prediction →"):
-                model, le_vendor, le_colour, le_product, le_price = load_model()
-                df_predictions = predict_risk(
-                    df_option, image_counts, model,
-                    le_vendor, le_colour, le_product, le_price
-                )
-                st.session_state.risk_predictions = df_predictions
-                st.markdown("<br>", unsafe_allow_html=True)
-                st.markdown("**📊 Risk Prediction Results:**")
-                st.dataframe(df_predictions, use_container_width=True, hide_index=True)
+        if st.button("Run Risk Prediction →"):
+            model, le_vendor, le_colour, le_product, le_price = load_model()
+            df_predictions = predict_risk(
+                df_option, image_counts, model,
+                le_vendor, le_colour, le_product, le_price
+            )
+            st.session_state.risk_predictions = df_predictions
 
         if st.session_state.risk_predictions is not None:
             st.markdown("<br>", unsafe_allow_html=True)
