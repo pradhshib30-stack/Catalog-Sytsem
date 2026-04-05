@@ -124,6 +124,14 @@ st.markdown("""
     }
     hr { border: none; border-top: 1px solid #DCE8E4; margin: 1.5rem 0; }
     footer {visibility: hidden;}
+
+    /* Sidebar collapse arrow */
+    [data-testid="collapsedControl"] {
+        color: #4A7C6F !important;
+        background-color: #F5F7F5 !important;
+        border: 1px solid #DCE8E4 !important;
+        border-radius: 50% !important;
+    }
     </style>
 """, unsafe_allow_html=True)
 
