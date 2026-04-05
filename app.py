@@ -745,7 +745,11 @@ elif st.session_state.step == 4:
         </div>
     """, unsafe_allow_html=True)
 
-    run_ml = st.radio("Do you want to run Risk Prediction?", ["No", "Yes"])
+    run_ml = st.radio(
+        "Do you want to run Risk Prediction?",
+        ["No", "Yes"],
+        key="run_ml_radio"
+    )
 
     if run_ml == "Yes":
         st.session_state.run_ml = True
@@ -765,25 +769,32 @@ elif st.session_state.step == 4:
             )
             image_counts[option_id] = count
 
-        if st.button("Run Risk Prediction →"):
-            model, le_vendor, le_colour, le_product, le_price = load_model()
-            df_predictions = predict_risk(
-                df_option, image_counts, model,
-                le_vendor, le_colour, le_product, le_price
-            )
-            st.session_state.risk_predictions = df_predictions
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("Run Risk Prediction →"):
+                model, le_vendor, le_colour, le_product, le_price = load_model()
+                df_predictions = predict_risk(
+                    df_option, image_counts, model,
+                    le_vendor, le_colour, le_product, le_price
+                )
+                st.session_state.risk_predictions = df_predictions
+                st.markdown("<br>", unsafe_allow_html=True)
+                st.markdown("**📊 Risk Prediction Results:**")
+                st.dataframe(df_predictions, use_container_width=True, hide_index=True)
+
+        if st.session_state.risk_predictions is not None:
             st.markdown("<br>", unsafe_allow_html=True)
             st.markdown("**📊 Risk Prediction Results:**")
-            st.dataframe(df_predictions, use_container_width=True, hide_index=True)
-
+            st.dataframe(st.session_state.risk_predictions, use_container_width=True, hide_index=True)
             st.markdown("<br>", unsafe_allow_html=True)
-            if st.button("Proceed to Re-upload →"):
+            if st.button("Proceed to Re-upload →", key="proceed_reupload_yes"):
                 st.session_state.step = 5
                 st.rerun()
+
     else:
         st.session_state.run_ml = False
         st.markdown("<br>", unsafe_allow_html=True)
-        if st.button("Skip & Proceed to Re-upload →"):
+        if st.button("Skip & Proceed to Re-upload →", key="proceed_reupload_no"):
             st.session_state.step = 5
             st.rerun()
 
